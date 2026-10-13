@@ -610,17 +610,15 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var r,n,i,a,
       <button class="btn small" id="clear-example" type="button">Clear example</button>
     </div>
 
-    <div class="sec-title">Players <span class="hint">Playbook, background, moves taken</span></div>
+    <div class="sec-title" style="align-items:center">Players <button class="btn small" id="reset-example" type="button" style="font-family:var(--body);font-weight:500">Reset to example</button></div>
+    <div class="banner" id="reset-confirm" hidden>
+      <span>Replace your party and settings with the example? Your current players will be removed.</span>
+      <span style="display:flex;gap:6px"><button class="btn small primary" id="reset-yes" type="button">Reset</button><button class="btn small" id="reset-no" type="button">Cancel</button></span>
+    </div>
     <div id="pcs" style="display:flex;flex-direction:column;gap:10px"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <select id="add-pb" aria-label="Playbook for new player" class="btn" style="padding:6px 8px"></select>
       <button class="btn" id="add-pc" type="button">+ Add player</button>
-      <span class="spacer"></span>
-      <button class="btn ghost" id="reset-example" type="button">Reset to example</button>
-    </div>
-    <div class="banner" id="reset-confirm" hidden>
-      <span>Replace your party and settings with the example? Your current players will be removed.</span>
-      <span style="display:flex;gap:6px"><button class="btn small primary" id="reset-yes" type="button">Reset</button><button class="btn small" id="reset-no" type="button">Cancel</button></span>
     </div>
 
     <div class="sec-title">On the screen <span class="hint">Pick what to include</span></div>
