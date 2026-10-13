@@ -46,6 +46,7 @@ button,input,select{font:inherit;color:inherit}
 .pc > summary::-webkit-details-marker{display:none}
 .pc > summary .who{font-family:var(--display);font-weight:700;font-size:16.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pc > summary .pbtag{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.pc > summary .dup{font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .pc > summary .count{margin-left:auto;font-size:12px;background:var(--chipbg);border-radius:20px;padding:1px 8px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .pc > summary .caret{transition:transform .15s}
 .pc[open] > summary .caret{transform:rotate(90deg)}
@@ -698,11 +699,24 @@ function moveSource(pc, id){
 
 /* ---------- builder UI ---------- */
 const $ = s => document.querySelector(s);
-function pbOptions(sel){ return DATA.playbooks.map(p => `<option value="${p.slug}" ${p.slug===sel?"selected":""}>${esc(p.name)}</option>`).join(""); }
-$("#add-pb").innerHTML = pbOptions("the-ranger");
+/* One character per playbook: a playbook held by another character is shown but can't be picked. */
+function takenBy(slug, exceptPc){ return state.pcs.find(q => q.pb === slug && q !== exceptPc); }
+function pbOptions(sel, forPc){ return DATA.playbooks.map(p => {
+  const owner = p.slug !== sel && takenBy(p.slug, forPc);
+  return `<option value="${p.slug}" ${p.slug===sel?"selected":""} ${owner?"disabled":""}>${esc(p.name)}${owner?` (${esc(owner.name||"taken")})`:""}</option>`; }).join(""); }
+function renderAddPicker(){
+  const sel = $("#add-pb"); const prev = sel.value;
+  const free = DATA.playbooks.filter(p => !takenBy(p.slug));
+  const pick = free.some(p => p.slug === prev) ? prev : (free[0] ? free[0].slug : "");
+  sel.innerHTML = pbOptions(pick, null).replace(/ selected/g, "").replace(`value="${pick}"`, `value="${pick}" selected`);
+  sel.value = pick;
+  sel.disabled = !free.length; $("#add-pc").disabled = !free.length;
+  $("#add-pc").textContent = free.length ? "+ Add player" : "All 9 playbooks are in use";
+}
 
 function renderBuilder(){
   $("#example-banner").hidden = !state.example;
+  renderAddPicker();
   const wrap = $("#pcs");
   const openIds = new Set([...wrap.querySelectorAll("details[open]")].map(d => d.dataset.id));
   wrap.innerHTML = "";
@@ -720,11 +734,11 @@ function renderBuilder(){
     const l6M = p.moves.filter(m => m.l6);
     const extraOpts = DATA.playbooks.filter(q => q.slug !== pc.pb).map(q => `<optgroup label="${esc(q.name)}">${q.moves.map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join("")}</optgroup>`).join("");
     d.innerHTML = `
-      <summary><span class="caret" aria-hidden="true">▸</span><span class="who">${esc(pc.name||"Unnamed")}</span><span class="pbtag">${esc(p.name)}</span><span class="count">${sel.size} moves</span></summary>
+      <summary><span class="caret" aria-hidden="true">▸</span><span class="who">${esc(pc.name||"Unnamed")}</span><span class="pbtag">${esc(p.name)}</span>${state.pcs.slice(0, idx).some(q => q.pb === pc.pb) ? `<span class="dup">Playbook already used — pick another</span>` : ""}<span class="count">${sel.size} moves</span></summary>
       <div class="pc-body">
         <div class="row">
           <div class="field"><label for="nm-${pc.id}">Character</label><input id="nm-${pc.id}" data-f="name" value="${esc(pc.name)}" placeholder="Name"></div>
-          <div class="field"><label for="pb-${pc.id}">Playbook</label><select id="pb-${pc.id}" data-f="pb">${pbOptions(pc.pb)}</select></div>
+          <div class="field"><label for="pb-${pc.id}">Playbook</label><select id="pb-${pc.id}" data-f="pb">${pbOptions(pc.pb, pc)}</select></div>
         </div>
         <div class="row">
           <div class="field"><label for="bg-${pc.id}">Background</label><select id="bg-${pc.id}" data-f="bg"><option value="">—</option>${p.backgrounds.map(b => `<option ${b.name===pc.bg?"selected":""}>${esc(b.name)}</option>`).join("")}</select></div>
@@ -751,6 +765,8 @@ function renderBuilder(){
       else if (f === "name") { d.querySelector(".who").textContent = el.value || "Unnamed"; }
       changed();
     }));
+    // refresh "(taken by Name)" labels once a name edit is finished
+    d.querySelector('[data-f="name"]').addEventListener("change", () => renderBuilder());
     d.querySelectorAll("[data-move]").forEach(el => el.addEventListener("change", () => {
       const id = el.dataset.move;
       pc.moves = el.checked ? [...new Set([...pc.moves, id])] : pc.moves.filter(x => x!==id);
@@ -767,7 +783,9 @@ function renderBuilder(){
   });
 }
 $("#add-pc").addEventListener("click", () => {
-  const pc = {id:uid(), name:"", pb:$("#add-pb").value, bg:"", inst:"", moves:[], extra:[], inv:[]};
+  const slug = $("#add-pb").value;
+  if (!slug || takenBy(slug)) { renderAddPicker(); return; }
+  const pc = {id:uid(), name:"", pb:slug, bg:"", inst:"", moves:[], extra:[], inv:[]};
   state.pcs.push(pc); renderBuilder();
   const d = document.querySelector(`details[data-id="${pc.id}"]`); if (d) { d.open = true; d.querySelector("input").focus(); }
   changed();
